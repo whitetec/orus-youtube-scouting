@@ -11,26 +11,12 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Esperar el componente animado
-        await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
+        // Esperar el bloque que contiene aria-label con viewers
+        await page.waitForSelector('#view-count', { timeout: 15000 });
 
-        const viewersNumber = await page.$$eval(
-            'yt-animated-rolling-number animated-rolling-character',
-            (columns) => {
-                const result = columns.map(col => {
-                    const offset = parseInt(col.style.marginTop || '0');
-                    const index = Math.abs(offset / 20);
-                    const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
-                        /^\d$/.test(div.textContent.trim())
-                    );
-                    const digit = digitDivs[index]?.textContent.trim();
-                    return digit || null;
-                });
-
-                const validDigits = result.filter(d => d !== null);
-                return validDigits.length ? parseInt(validDigits.join(''), 10) : null;
-            }
-        );
+        const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
+        const match = rawText.match(/\d+/);
+        const viewersNumber = match ? parseInt(match[0], 10) : null;
 
         if (viewersNumber !== null && !isNaN(viewersNumber)) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
