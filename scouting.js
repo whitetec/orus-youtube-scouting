@@ -11,8 +11,8 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        await page.waitForSelector('span[class="view-count"]', { timeout: 15000 });
-        const viewers = await page.$eval('span[class="view-count"]', el => el.textContent);
+        await page.waitForSelector('div#info-strings yt-formatted-string', { timeout: 15000 });
+        const viewers = await page.$eval('div#info-strings yt-formatted-string', el => el.textContent);
 
         console.log(`>> ${url} | Viewers detectados: ${viewers}`);
     } catch (err) {
@@ -21,6 +21,7 @@ async function scoutViewers(url) {
 
     await browser.close();
 }
+
 
 async function startScouting() {
     console.log('>> Iniciando scouting de canales...');
