@@ -1,73 +1,70 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
 
-async function scoutViewers(browser, url) {
+// Array simple de User-Agents reales de navegador
+const userAgents = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+];
+
+async function scoutViewers(url) {
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
     const page = await browser.newPage();
 
+    // Setear un User-Agent aleatorio por cada scouting
+    const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+    await page.setUserAgent(randomUA);
+
     try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        await page.waitForFunction(() => {
-            const el = document.querySelector('#view-count');
-            return el && el.getAttribute('aria-label') && el.getAttribute('aria-label').length > 0;
-        }, { timeout: 15000 });
+        await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
 
-        const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
-        const digitsOnly = rawText.replace(/[^\d]/g, '');
-        const viewersNumber = digitsOnly ? parseInt(digitsOnly, 10) : null;
+        const viewersNumber = await page.$$eval('yt-animated-rolling-number div', divs => {
+            const digits = divs
+                .map(div => div.textContent.trim())
+                .filter(text => /^\d$/.test(text));
+            return parseInt(digits.join(''), 10);
+        });
 
-        if (viewersNumber !== null && !isNaN(viewersNumber)) {
-            console.log(`>> ${url} | Viewers detected: ${viewersNumber}`);
+        if (viewersNumber && viewersNumber > 0) {
+            console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
         } else {
-            console.log(`\x1b[31m>> ${url} | Offline (invalid number)\x1b[0m`);
+            console.log(`>> ${url} | Offline (no viewers o error)`);
         }
-
     } catch (err) {
-        console.log(`\x1b[31m>> ${url} | Offline (no viewers or error)\x1b[0m`);
+        console.log(`>> ${url} | Offline (no viewers o error: ${err.message})`);
     }
 
-    await page.close();
+    await browser.close();
 }
 
 async function startScouting() {
     console.log('>> Starting channel scouting...');
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
-    const batchSize = 3;
-    const pauseBetweenBatchesMs = 10000;
-
-    const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: 'new'
-    });
 
     try {
         const res = await fetch(endpoint);
         const canales = await res.json();
 
-        for (let i = 0; i < canales.length; i += batchSize) {
-            const batch = canales.slice(i, i + batchSize);
-
-            await Promise.all(batch.map(async (canalUrl) => {
-                try {
-                    await scoutViewers(browser, canalUrl);
-                } catch (err) {
-                    console.log(`\x1b[31m>> ${canalUrl} | Critical error processing channel\x1b[0m`);
-                }
-            }));
-
-            if (i + batchSize < canales.length) {
-                console.log('>> Waiting before next batch...');
-                await new Promise(resolve => setTimeout(resolve, pauseBetweenBatchesMs));
-            }
+        for (const canalUrl of canales) {
+            await scoutViewers(canalUrl);
+            console.log('>> Waiting before next channel...');
+            await new Promise(resolve => setTimeout(resolve, 20000)); // 20 segundos de pausa
         }
-
     } catch (err) {
-        console.log('>> Error fetching channel list:', err.message);
+        console.log('>> Error al obtener lista de canales:', err.message);
     }
 
-    await browser.close();
     console.log('>> Scouting finished.');
 }
 
+// Iniciar
 startScouting();
