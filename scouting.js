@@ -4,7 +4,7 @@ const fetch = require('node-fetch'); // Para consumir el endpoint de WordPress
 async function scoutViewers(url) {
     const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: true
+        headless: 'new' // Modo headful moderno
     });
     const page = await browser.newPage();
 
@@ -12,9 +12,7 @@ async function scoutViewers(url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
         await page.waitForSelector('#view-count', { timeout: 15000 });
-
-        // Delay manual de 2 segundos
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Delay de 2 segundos
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const match = rawText.match(/\d+/);
@@ -57,4 +55,3 @@ async function startScouting() {
 
 // Iniciar el proceso
 startScouting();
-
