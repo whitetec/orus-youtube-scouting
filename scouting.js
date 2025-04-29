@@ -6,7 +6,7 @@ async function scoutViewers(browser, url) {
 
     try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos para permitir carga
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos para carga
 
         const exists = await page.$('#view-count');
         if (!exists) {
@@ -36,6 +36,7 @@ async function startScouting() {
     console.log('>> Iniciando scouting de canales...');
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
+    const batchSize = 3; // 🔥 Procesar 3 canales en paralelo máximo
 
     const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -46,9 +47,10 @@ async function startScouting() {
         const res = await fetch(endpoint);
         const canales = await res.json();
 
-        await Promise.all(
-            canales.map(canalUrl => scoutViewers(browser, canalUrl))
-        );
+        for (let i = 0; i < canales.length; i += batchSize) {
+            const batch = canales.slice(i, i + batchSize);
+            await Promise.all(batch.map(canalUrl => scoutViewers(browser, canalUrl)));
+        }
 
     } catch (err) {
         console.log('>> Error al obtener lista de canales:', err.message);
