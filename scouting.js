@@ -6,37 +6,35 @@ async function scoutViewers(browser, url) {
 
     try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos para carga
 
-        const exists = await page.$('#view-count');
-        if (!exists) {
-            console.log(`\x1b[31m>> ${url} | Fuera del aire (view-count no encontrado)\x1b[0m`);
-            await page.close();
-            return;
-        }
+        // Wait for the #view-count element to have a valid aria-label
+        await page.waitForFunction(() => {
+            const el = document.querySelector('#view-count');
+            return el && el.getAttribute('aria-label') && el.getAttribute('aria-label').length > 0;
+        }, { timeout: 15000 });
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const digitsOnly = rawText.replace(/[^\d]/g, '');
         const viewersNumber = digitsOnly ? parseInt(digitsOnly, 10) : null;
 
         if (viewersNumber !== null && !isNaN(viewersNumber)) {
-            console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
+            console.log(`>> ${url} | Viewers detected: ${viewersNumber}`);
         } else {
-            console.log(`\x1b[31m>> ${url} | Fuera del aire (no número detectado)\x1b[0m`);
+            console.log(`\x1b[31m>> ${url} | Offline (invalid number)\x1b[0m`);
         }
 
     } catch (err) {
-        console.log(`\x1b[31m>> ${url} | Fuera del aire (error de carga)\x1b[0m`);
+        console.log(`\x1b[31m>> ${url} | Offline (no viewers or error)\x1b[0m`);
     }
 
     await page.close();
 }
 
 async function startScouting() {
-    console.log('>> Iniciando scouting de canales...');
+    console.log('>> Starting channel scouting...');
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
-    const batchSize = 3; // 🔥 Procesar 3 canales en paralelo máximo
+    const batchSize = 3; // Process 3 channels at a time
 
     const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -53,11 +51,11 @@ async function startScouting() {
         }
 
     } catch (err) {
-        console.log('>> Error al obtener lista de canales:', err.message);
+        console.log('>> Error fetching channel list:', err.message);
     }
 
     await browser.close();
-    console.log('>> Scouting finalizado.');
+    console.log('>> Scouting finished.');
 }
 
 startScouting();
