@@ -1,10 +1,10 @@
 const puppeteer = require('puppeteer');
-const fetch = require('node-fetch'); // Para consumir el endpoint de WordPress
+const fetch = require('node-fetch');
 
 async function scoutViewers(url) {
     const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: 'new' // Modo headful moderno
+        headless: 'new'
     });
     const page = await browser.newPage();
 
@@ -12,7 +12,8 @@ async function scoutViewers(url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
         await page.waitForSelector('#view-count', { timeout: 15000 });
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Delay de 2 segundos
+        await page.waitForNetworkIdle({ idleTime: 2000, timeout: 10000 }); // esperar a que esté quieto
+        await new Promise(resolve => setTimeout(resolve, 1000)); // pequeño colchón extra
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const match = rawText.match(/\d+/);
@@ -20,14 +21,12 @@ async function scoutViewers(url) {
 
         if (viewersNumber !== null && !isNaN(viewersNumber)) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
-            // (Opcional) enviar a WordPress o Google Sheets
-            // await enviarViewers(url, viewersNumber);
         } else {
-            console.log(`>> ${url} | No se detecta viewers activos o número inválido.`);
+            console.log(`\x1b[31m>> ${url} | Fuera del aire\x1b[0m`);
         }
 
     } catch (err) {
-        console.log(`>> ${url} | No se detecta transmisión en vivo o error: ${err.message}`);
+        console.log(`\x1b[31m>> ${url} | Fuera del aire\x1b[0m`);
     }
 
     await browser.close();
