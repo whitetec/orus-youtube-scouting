@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
 
-// Array simple de User-Agents reales de navegador
+// Lista de User-Agents reales
 const userAgents = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
@@ -16,14 +16,11 @@ async function scoutViewers(url) {
     });
 
     const page = await browser.newPage();
-
-    // Setear un User-Agent aleatorio por cada scouting
     const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
     await page.setUserAgent(randomUA);
 
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-
         await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
 
         const viewersNumber = await page.$$eval('yt-animated-rolling-number div', divs => {
@@ -33,20 +30,34 @@ async function scoutViewers(url) {
             return parseInt(digits.join(''), 10);
         });
 
-        if (viewersNumber && viewersNumber > 0) {
-            console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
-        } else {
-            console.log(`>> ${url} | Offline (no viewers o error)`);
-        }
+        await browser.close();
+        return viewersNumber || 0;
     } catch (err) {
-        console.log(`>> ${url} | Offline (no viewers o error: ${err.message})`);
+        await browser.close();
+        return 0;
     }
+}
 
-    await browser.close();
+async function scoutWithRetry(url) {
+    let viewers = await scoutViewers(url);
+
+    if (viewers > 0) {
+        console.log(`>> ${url} | Audiencia ahora: ${viewers}`);
+    } else {
+        console.log(`>> ${url} | Primer intento fallido, reintentando...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        viewers = await scoutViewers(url);
+
+        if (viewers > 0) {
+            console.log(`>> ${url} | Audiencia ahora: ${viewers}`);
+        } else {
+            console.log(`>> ${url} | Fuera del aire`);
+        }
+    }
 }
 
 async function startScouting() {
-    console.log('>> Starting channel scouting...');
+    console.log('>> Iniciando scouting de canales...');
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
 
@@ -55,16 +66,15 @@ async function startScouting() {
         const canales = await res.json();
 
         for (const canalUrl of canales) {
-            await scoutViewers(canalUrl);
-            console.log('>> Waiting before next channel...');
-            await new Promise(resolve => setTimeout(resolve, 20000)); // 20 segundos de pausa
+            await scoutWithRetry(canalUrl);
+            console.log('>> Esperando antes de procesar el siguiente canal...');
+            await new Promise(resolve => setTimeout(resolve, 25000));
         }
     } catch (err) {
         console.log('>> Error al obtener lista de canales:', err.message);
     }
 
-    console.log('>> Scouting finished.');
+    console.log('>> Scouting finalizado.');
 }
 
-// Iniciar
 startScouting();
