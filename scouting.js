@@ -5,10 +5,15 @@ async function scoutViewers(browser, url) {
     const page = await browser.newPage();
 
     try {
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos para permitir carga
 
-        await page.waitForSelector('#view-count', { timeout: 15000 });
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Delay de carga
+        const exists = await page.$('#view-count');
+        if (!exists) {
+            console.log(`\x1b[31m>> ${url} | Fuera del aire (view-count no encontrado)\x1b[0m`);
+            await page.close();
+            return;
+        }
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const digitsOnly = rawText.replace(/[^\d]/g, '');
@@ -17,11 +22,11 @@ async function scoutViewers(browser, url) {
         if (viewersNumber !== null && !isNaN(viewersNumber)) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
         } else {
-            console.log(`\x1b[31m>> ${url} | Fuera del aire\x1b[0m`);
+            console.log(`\x1b[31m>> ${url} | Fuera del aire (no número detectado)\x1b[0m`);
         }
 
     } catch (err) {
-        console.log(`\x1b[31m>> ${url} | Fuera del aire\x1b[0m`);
+        console.log(`\x1b[31m>> ${url} | Fuera del aire (error de carga)\x1b[0m`);
     }
 
     await page.close();
@@ -41,7 +46,6 @@ async function startScouting() {
         const res = await fetch(endpoint);
         const canales = await res.json();
 
-        // Procesar todos los canales abriendo pestañas nuevas en el mismo navegador
         await Promise.all(
             canales.map(canalUrl => scoutViewers(browser, canalUrl))
         );
