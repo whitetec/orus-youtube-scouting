@@ -1,0 +1,13 @@
+{
+    "name": "orus-youtube-scouting",
+    "version": "1.0.0",
+    "description": "ORUS YouTube scouting system",
+    "main": "orus-tracker/scouting.js",
+    "scripts": {
+      "start": "node orus-tracker/scouting.js"
+    },
+    "dependencies": {
+      "puppeteer": "^22.8.2"
+    }
+  }
+  
