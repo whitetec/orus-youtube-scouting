@@ -7,7 +7,6 @@ async function scoutViewers(browser, url) {
     try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Wait until #view-count has a valid aria-label
         await page.waitForFunction(() => {
             const el = document.querySelector('#view-count');
             return el && el.getAttribute('aria-label') && el.getAttribute('aria-label').length > 0;
@@ -34,8 +33,8 @@ async function startScouting() {
     console.log('>> Starting channel scouting...');
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
-    const batchSize = 3; // Process 3 channels at a time
-    const pauseBetweenBatchesMs = 10000; // 10 seconds
+    const batchSize = 3;
+    const pauseBetweenBatchesMs = 10000;
 
     const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -48,7 +47,15 @@ async function startScouting() {
 
         for (let i = 0; i < canales.length; i += batchSize) {
             const batch = canales.slice(i, i + batchSize);
-            await Promise.all(batch.map(canalUrl => scoutViewers(browser, canalUrl)));
+
+            await Promise.all(batch.map(async (canalUrl) => {
+                try {
+                    await scoutViewers(browser, canalUrl);
+                } catch (err) {
+                    console.log(`\x1b[31m>> ${canalUrl} | Critical error processing channel\x1b[0m`);
+                }
+            }));
+
             if (i + batchSize < canales.length) {
                 console.log('>> Waiting before next batch...');
                 await new Promise(resolve => setTimeout(resolve, pauseBetweenBatchesMs));
