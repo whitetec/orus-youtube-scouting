@@ -11,16 +11,24 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Esperar el contenedor del número animado
+        // Esperar el componente animado
         await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
 
-        const viewersNumber = await page.$$eval('yt-animated-rolling-number div', divs => {
-            // Tomar los textos de los divs, filtrar los que son solo números
-            const digits = divs
-                .map(div => div.textContent.trim())
-                .filter(text => /^\d$/.test(text)); // solo un solo dígito
-            return parseInt(digits.join(''), 10);
-        });
+        // Extraer solo los primeros dígitos visibles
+        const viewersNumber = await page.$$eval(
+            'yt-animated-rolling-number animated-rolling-character',
+            (columns) => {
+                return parseInt(
+                    columns.map(col => {
+                        const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
+                            /^\d$/.test(div.textContent.trim())
+                        );
+                        return digitDivs[0]?.textContent.trim() || ''; // solo el primer dígito
+                    }).join(''),
+                    10
+                );
+            }
+        );
 
         if (viewersNumber) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
