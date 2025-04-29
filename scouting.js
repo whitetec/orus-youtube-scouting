@@ -1,11 +1,7 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
 
-async function scoutViewers(url) {
-    const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: 'new'
-    });
+async function scoutViewers(browser, url) {
     const page = await browser.newPage();
 
     try {
@@ -28,7 +24,7 @@ async function scoutViewers(url) {
         console.log(`\x1b[31m>> ${url} | Fuera del aire\x1b[0m`);
     }
 
-    await browser.close();
+    await page.close();
 }
 
 async function startScouting() {
@@ -36,19 +32,25 @@ async function startScouting() {
 
     const endpoint = 'https://panoptico.whitetec.org/wp-json/orus/v1/canales-stream';
 
+    const browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: 'new'
+    });
+
     try {
         const res = await fetch(endpoint);
         const canales = await res.json();
 
-        // Procesar todos en paralelo
+        // Procesar todos los canales abriendo pestañas nuevas en el mismo navegador
         await Promise.all(
-            canales.map(canalUrl => scoutViewers(canalUrl))
+            canales.map(canalUrl => scoutViewers(browser, canalUrl))
         );
 
     } catch (err) {
         console.log('>> Error al obtener lista de canales:', err.message);
     }
 
+    await browser.close();
     console.log('>> Scouting finalizado.');
 }
 
