@@ -11,9 +11,10 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Esperar el contenedor con aria-label y luego dar delay
         await page.waitForSelector('#view-count', { timeout: 15000 });
-        await page.waitForTimeout(2000); // Esperar que se actualice el aria-label
+
+        // Delay manual de 2 segundos
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const match = rawText.match(/\d+/);
@@ -56,3 +57,4 @@ async function startScouting() {
 
 // Iniciar el proceso
 startScouting();
+
