@@ -11,8 +11,9 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Esperar el bloque que contiene aria-label con viewers
+        // Esperar el contenedor con aria-label y luego dar delay
         await page.waitForSelector('#view-count', { timeout: 15000 });
+        await page.waitForTimeout(2000); // Esperar que se actualice el aria-label
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
         const match = rawText.match(/\d+/);
