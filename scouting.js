@@ -18,17 +18,20 @@ async function scoutViewers(url) {
         const viewersNumber = await page.$$eval(
             'yt-animated-rolling-number animated-rolling-character',
             (columns) => {
-                return parseInt(
-                    columns.map(col => {
-                        const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
-                            /^\d$/.test(div.textContent.trim())
-                        );
-                        return digitDivs[0]?.textContent.trim() || ''; // solo el primer dígito
-                    }).join(''),
-                    10
-                );
+              return parseInt(
+                columns.map(col => {
+                  const offset = parseInt(col.style.marginTop || '0');
+                  const index = Math.abs(offset / 20); // cada fila es 20px
+                  const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
+                    /^\d$/.test(div.textContent.trim())
+                  );
+                  return digitDivs[index]?.textContent.trim() || '';
+                }).join(''),
+                10
+              );
             }
-        );
+          );
+          
 
         if (viewersNumber) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
