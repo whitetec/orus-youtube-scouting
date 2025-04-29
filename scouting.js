@@ -12,12 +12,13 @@ async function scoutViewers(url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
         await page.waitForSelector('#view-count', { timeout: 15000 });
-        await page.waitForNetworkIdle({ idleTime: 2000, timeout: 10000 }); // esperar a que esté quieto
-        await new Promise(resolve => setTimeout(resolve, 1000)); // pequeño colchón extra
+        await new Promise(resolve => setTimeout(resolve, 2000)); // esperar que termine de cargar
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
-        const match = rawText.match(/\d+/);
-        const viewersNumber = match ? parseInt(match[0], 10) : null;
+
+        // Eliminar todo lo que no sea número (quita puntos, letras, etc.)
+        const digitsOnly = rawText.replace(/[^\d]/g, '');
+        const viewersNumber = digitsOnly ? parseInt(digitsOnly, 10) : null;
 
         if (viewersNumber !== null && !isNaN(viewersNumber)) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
@@ -52,5 +53,4 @@ async function startScouting() {
     console.log('>> Scouting finalizado.');
 }
 
-// Iniciar el proceso
 startScouting();
