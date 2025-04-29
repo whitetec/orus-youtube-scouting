@@ -14,26 +14,25 @@ async function scoutViewers(url) {
         // Esperar el componente animado
         await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
 
-        // Extraer solo los primeros dígitos visibles
         const viewersNumber = await page.$$eval(
             'yt-animated-rolling-number animated-rolling-character',
             (columns) => {
-              return parseInt(
-                columns.map(col => {
-                  const offset = parseInt(col.style.marginTop || '0');
-                  const index = Math.abs(offset / 20); // cada fila es 20px
-                  const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
-                    /^\d$/.test(div.textContent.trim())
-                  );
-                  return digitDivs[index]?.textContent.trim() || '';
-                }).join(''),
-                10
-              );
-            }
-          );
-          
+                const result = columns.map(col => {
+                    const offset = parseInt(col.style.marginTop || '0');
+                    const index = Math.abs(offset / 20);
+                    const digitDivs = Array.from(col.querySelectorAll('div')).filter(div =>
+                        /^\d$/.test(div.textContent.trim())
+                    );
+                    const digit = digitDivs[index]?.textContent.trim();
+                    return digit || null;
+                });
 
-        if (viewersNumber) {
+                const validDigits = result.filter(d => d !== null);
+                return validDigits.length ? parseInt(validDigits.join(''), 10) : null;
+            }
+        );
+
+        if (viewersNumber !== null && !isNaN(viewersNumber)) {
             console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
             // (Opcional) enviar a WordPress o Google Sheets
             // await enviarViewers(url, viewersNumber);
