@@ -11,21 +11,23 @@ async function scoutViewers(url) {
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Esperar al contenedor donde aparece la info de viewers
-        await page.waitForSelector('div#info-strings yt-formatted-string', { timeout: 15000 });
+        // Esperar el contenedor del número animado
+        await page.waitForSelector('yt-animated-rolling-number', { timeout: 15000 });
 
-        const infoTexts = await page.$$eval('div#info-strings yt-formatted-string', els => els.map(el => el.textContent.trim()));
+        const viewersNumber = await page.$$eval('yt-animated-rolling-number div', divs => {
+            // Tomar los textos de los divs, filtrar los que son solo números
+            const digits = divs
+                .map(div => div.textContent.trim())
+                .filter(text => /^\d$/.test(text)); // solo un solo dígito
+            return parseInt(digits.join(''), 10);
+        });
 
-        // Buscar el texto que contiene "usuarios viéndolo ahora"
-        const viewersText = infoTexts.find(text => text.includes('usuarios viéndolo ahora'));
-
-        if (viewersText) {
-            console.log(`>> ${url} | Viewers detectados: ${viewersText}`);
-            
-            // (Opcional) enviar viewers al endpoint de WordPress acá si querés
-            // Ejemplo: await enviarViewersAWordpress(url, viewersText);
+        if (viewersNumber) {
+            console.log(`>> ${url} | Viewers detectados: ${viewersNumber}`);
+            // (Opcional) enviar a WordPress o Google Sheets
+            // await enviarViewers(url, viewersNumber);
         } else {
-            console.log(`>> ${url} | No se detecta viewers activos.`);
+            console.log(`>> ${url} | No se detecta viewers activos o número inválido.`);
         }
 
     } catch (err) {
