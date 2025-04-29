@@ -12,11 +12,9 @@ async function scoutViewers(url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
         await page.waitForSelector('#view-count', { timeout: 15000 });
-        await new Promise(resolve => setTimeout(resolve, 2000)); // esperar que termine de cargar
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Delay de carga
 
         const rawText = await page.$eval('#view-count', el => el.getAttribute('aria-label') || '');
-
-        // Eliminar todo lo que no sea número (quita puntos, letras, etc.)
         const digitsOnly = rawText.replace(/[^\d]/g, '');
         const viewersNumber = digitsOnly ? parseInt(digitsOnly, 10) : null;
 
@@ -42,9 +40,10 @@ async function startScouting() {
         const res = await fetch(endpoint);
         const canales = await res.json();
 
-        for (const canalUrl of canales) {
-            await scoutViewers(canalUrl);
-        }
+        // Procesar todos en paralelo
+        await Promise.all(
+            canales.map(canalUrl => scoutViewers(canalUrl))
+        );
 
     } catch (err) {
         console.log('>> Error al obtener lista de canales:', err.message);
